@@ -142,6 +142,17 @@ def compute_gradient_penalty(D, real_samples, fake_samples):
 #  Training
 # ----------
 
+def get_gradients(self):
+    grads = []
+    for param in self.parameters():
+        if param.grad is not None:
+            grad = param.grad
+        else:
+            grad = torch.zeros(param.shape, dtype=param.dtype, device=param.device)
+        grads.append(grad.view(-1))
+    grads = torch.cat(grads).clone()
+    return grads
+
 batches_done = 0
 for epoch in range(opt.n_epochs):
     for i, (imgs, _) in enumerate(dataloader):
@@ -159,21 +170,34 @@ for epoch in range(opt.n_epochs):
         z = Variable(Tensor(np.random.normal(0, 1, (imgs.shape[0], opt.latent_dim))))
 
         # Generate a batch of images
-        fake_imgs = generator(z)
+        fake_imgs = generator(z).detach()
 
         # Real images
         real_validity = discriminator(real_imgs)
         # Fake images
         fake_validity = discriminator(fake_imgs)
         # Gradient penalty
-        gradient_penalty = compute_gradient_penalty(discriminator, real_imgs.data, fake_imgs.data)
+        gradient_penalty = lambda_gp * compute_gradient_penalty(discriminator, real_imgs.data, fake_imgs.data)
         # Adversarial loss
-        d_loss = -torch.mean(real_validity) + torch.mean(fake_validity) + lambda_gp * gradient_penalty
+        d_loss_diff = -torch.mean(real_validity) + torch.mean(fake_validity)
 
-        d_loss.backward()
+        d_loss_diff.backward()
+        d_loss_diff_grad = get_gradients(discriminator)
+
+        gradient_penalty.backward()
+        grad = get_gradients(discriminator)
+        gp_grad = grad - d_loss_diff_grad
+
+        d_loss_diff_grad = d_loss_diff_grad.sum()
+        gp_grad = gp_grad.sum()
+
+        d_loss = d_loss_diff + gradient_penalty
+        #d_loss.backward()
         optimizer_D.step()
 
         optimizer_G.zero_grad()
+
+        s = "[Epoch %d/%d] [Batch %d/%d] [D loss diff: %f] [GP: %f] [D loss diff grad: %f] [GP grad: %f]" % (epoch, opt.n_epochs, i, len(dataloader), d_loss_diff.item(), gradient_penalty.item(), d_loss_diff_grad.item())
 
         # Train the generator every n_critic steps
         if i % opt.n_critic == 0:
@@ -193,11 +217,13 @@ for epoch in range(opt.n_epochs):
             optimizer_G.step()
 
             print(
-                "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f]"
-                % (epoch, opt.n_epochs, i, len(dataloader), d_loss.item(), g_loss.item())
+                "%s [G loss: %f]"
+                % (s, g_loss.item())
             )
 
             if batches_done % opt.sample_interval == 0:
                 save_image(fake_imgs.data[:25], "images/%d.png" % batches_done, nrow=5, normalize=True)
 
             batches_done += opt.n_critic
+        else:
+            print(s)
