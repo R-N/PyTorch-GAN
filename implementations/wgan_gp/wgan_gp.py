@@ -127,6 +127,7 @@ LOSSES = {
 }
 
 DEFAULT_GRAD_LOSS_FN = LOSSES[opt.grad_loss_fn]
+print(DEFAULT_GRAD_LOSS_FN)
 
 def calc_grad_loss(grad_norm, loss_fn=None):
     loss_fn = loss_fn or DEFAULT_GRAD_LOSS_FN
