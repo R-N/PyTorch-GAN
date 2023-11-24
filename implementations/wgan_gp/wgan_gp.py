@@ -15,6 +15,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.autograd as autograd
 import torch
+from .metrics import mile, mire
 
 os.makedirs("images", exist_ok=True)
 
@@ -31,6 +32,7 @@ parser.add_argument("--channels", type=int, default=1, help="number of image cha
 parser.add_argument("--n_critic", type=int, default=5, help="number of training steps for discriminator per iter")
 parser.add_argument("--clip_value", type=float, default=0.01, help="lower and upper clip value for disc. weights")
 parser.add_argument("--sample_interval", type=int, default=400, help="interval betwen image samples")
+parser.add_argument("--grad_loss_fn", type=str, default="mse", choices=['mse', 'mile', 'mire'])
 opt = parser.parse_args()
 print(opt)
 
@@ -115,6 +117,19 @@ optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=opt.lr, betas=(opt
 
 Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 
+def mse(pred, target):
+    return ((pred - target) ** 2).mean()
+
+LOSSES = {
+    "mse": mse,
+    "mile": mile,
+    "mire": mire,
+}
+
+DEFAULT_GRAD_LOSS_FN = LOSSES[opt.grad_loss_fn]
+
+def calc_grad_loss(grad_norm, loss_fn=DEFAULT_GRAD_LOSS_FN):
+    return loss_fn(grad_norm, torch.ones(grad_norm.shape, dtype=grad_norm.dtype, device=grad_norm.device))
 
 def compute_gradient_penalty(D, real_samples, fake_samples):
     """Calculates the gradient penalty loss for WGAN GP"""
@@ -134,7 +149,8 @@ def compute_gradient_penalty(D, real_samples, fake_samples):
         only_inputs=True,
     )[0]
     gradients = gradients.view(gradients.size(0), -1)
-    gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
+    grad_norm = gradients.norm(2, dim=1)
+    gradient_penalty = calc_grad_loss(grad_norm)
     return gradient_penalty
 
 
