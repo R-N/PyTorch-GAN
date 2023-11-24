@@ -15,7 +15,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.autograd as autograd
 import torch
-from .metrics import mile, mire
+from metrics import mile, mire
 
 os.makedirs("images", exist_ok=True)
 
