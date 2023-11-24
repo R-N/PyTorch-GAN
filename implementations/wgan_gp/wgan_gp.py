@@ -128,7 +128,8 @@ LOSSES = {
 
 DEFAULT_GRAD_LOSS_FN = LOSSES[opt.grad_loss_fn]
 
-def calc_grad_loss(grad_norm, loss_fn=DEFAULT_GRAD_LOSS_FN):
+def calc_grad_loss(grad_norm, loss_fn=None):
+    loss_fn = loss_fn or DEFAULT_GRAD_LOSS_FN
     return loss_fn(grad_norm, torch.ones(grad_norm.shape, dtype=grad_norm.dtype, device=grad_norm.device))
 
 def compute_gradient_penalty(D, real_samples, fake_samples):
