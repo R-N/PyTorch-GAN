@@ -153,6 +153,12 @@ def get_gradients(self):
     grads = torch.cat(grads).clone()
     return grads
 
+def reduce_grad(grad):
+    grad = grad.norm(2, dim=-1)
+    if grad.dim() > 0:
+        grad = grad.sum(dim=0)
+    return grad
+
 batches_done = 0
 for epoch in range(opt.n_epochs):
     for i, (imgs, _) in enumerate(dataloader):
@@ -188,8 +194,8 @@ for epoch in range(opt.n_epochs):
         grad = get_gradients(discriminator)
         gp_grad = grad - d_loss_diff_grad
 
-        d_loss_diff_grad = d_loss_diff_grad.sum()
-        gp_grad = gp_grad.sum()
+        d_loss_diff_grad = reduce_grad(d_loss_diff_grad)
+        gp_grad = reduce_grad(gp_grad)
 
         d_loss = d_loss_diff + gradient_penalty
         #d_loss.backward()
@@ -197,7 +203,7 @@ for epoch in range(opt.n_epochs):
 
         optimizer_G.zero_grad()
 
-        s = "[Epoch %d/%d] [Batch %d/%d] [D loss diff: %f] [GP: %f] [D loss diff grad: %f] [GP grad: %f]" % (epoch, opt.n_epochs, i, len(dataloader), d_loss_diff.item(), gradient_penalty.item(), gp_grad.item(), d_loss_diff_grad.item())
+        s = "[Epoch %d/%d] [Batch %d/%d] [D loss diff: %f] [GP: %f] [D loss diff grad: %f] [GP grad: %f]" % (epoch, opt.n_epochs, i, len(dataloader), d_loss_diff.item(), gradient_penalty.item(), d_loss_diff_grad.item(), gp_grad.item())
 
         # Train the generator every n_critic steps
         if i % opt.n_critic == 0:
