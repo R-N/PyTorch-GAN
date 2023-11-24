@@ -197,7 +197,7 @@ for epoch in range(opt.n_epochs):
 
         optimizer_G.zero_grad()
 
-        s = "[Epoch %d/%d] [Batch %d/%d] [D loss diff: %f] [GP: %f] [D loss diff grad: %f] [GP grad: %f]" % (epoch, opt.n_epochs, i, len(dataloader), d_loss_diff.item(), gradient_penalty.item(), d_loss_diff_grad.item())
+        s = "[Epoch %d/%d] [Batch %d/%d] [D loss diff: %f] [GP: %f] [D loss diff grad: %f] [GP grad: %f]" % (epoch, opt.n_epochs, i, len(dataloader), d_loss_diff.item(), gradient_penalty.item(), gp_grad.item(), d_loss_diff_grad.item())
 
         # Train the generator every n_critic steps
         if i % opt.n_critic == 0:
